@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+	<title>Doggo</title>
+
+	<meta charset="utf-8">
+
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+	<style>
+		body {
+
+			background-color: #000000;
+
+			/* To use the complete page */
+
+			margin: 0px;
+
+			overflow: hidden;
+		}
+
+		#loading-screen {
+			z-index: 10;
+			position: absolute;
+			height: 100%;
+			width: 100%;
+			background-color: #55ddff;
+
+			display: flex;
+  			justify-content: center;
+  			align-items: center;
+		}
+
+		#stamina-bar {
+			position: absolute;
+			width: 15%;
+			height: 5px;
+			bottom: 5%;
+			left: 5%;
+			border-radius: 3px;
+			border-width: 1px;
+			border-style: solid;
+			border-color: rgb(255, 213, 136);
+			box-shadow: 0px 0px 15px #4a4e516f;
+			}
+
+		progress {
+			border: none;
+			background:rgb(255, 213, 136);
+			}
+
+			progress {
+			color: rgb(255, 180, 40);
+			}
+
+			progress::-moz-progress-bar {
+			background: rgb(255, 180, 40);
+			}
+
+		#jump-charge-bar {
+			position: absolute;
+			width: 8%;
+			bottom: 20%;
+			left: 0%;
+			rotate: -90deg;
+		}
+
+		#colision-warning {
+			z-index: 1;
+			position: absolute;
+			width: 10px;
+			height: 10px;
+			top: 1.5%;
+			left: 7.5%;
+			background-color: aqua;
+		}
+
+		#reload-warning {
+			position: absolute;
+			width: 50px;
+			height: 50px;
+			right: 2%;
+			top: 7.5%;
+			z-index: 3;
+
+			text-align: center;
+			line-height: 110%;
+			color: #ffffff;
+			font-size: small;
+			font-weight: bold;
+			font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+		}
+
+		#settings-button {
+			position: absolute;
+			width: 30px;
+			height: 30px;
+			border-radius: 20px;
+			border-width: 2px;
+			border-style: solid;
+			border-color: rgb(255, 213, 136);
+			background-color: rgb(255, 180, 40);
+			top: 2%;
+			right: 2%;
+			box-shadow: 0px 0px 15px #4a4e516f;
+
+			display: flex;
+  			justify-content: center;
+  			align-items: center;
+		}
+
+		#settings-bg {
+			z-index: 2;
+			position: absolute;
+			width: 100%;
+			height: 100%;
+			background-color: #0b0a0ca4;
+			display: none;
+		}
+
+		#settings-page {
+			z-index: 3;
+			position: absolute;
+			left: 30%;
+			right: 30%;
+			top: 5%;
+			bottom: 5%;
+			background-color: #bcd1eb;
+			border-radius: 10px;
+			display: none;
+			padding: 5%;
+		}
+
+		.settings-option {
+			margin: 5%;
+			left: 0%;
+			right: 0%;
+
+			font-size: x-large;
+			font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+		}
+
+		.checkbox-setting {
+			scale: 120%;
+			position: absolute;
+			left: 75%;
+
+		}
+
+	</style>
+
+
+</head>
+
+<body>
+
+	<div id="loading-screen">
+		<h1 class="big-text">Loading... 🐕</h1>
+	</div>
+
+	<div id="settings-button">
+		<img src="images/setting.png" style="height: 22px"></img>
+	</div>
+	<div id="reload-warning" onClick="window.location.reload();">
+		<img src="images/reload.png" style="height: 50px"></img>
+		Reload to apply changes
+	</div>
+
+	<div id="settings-bg"></div>
+	<div id="settings-page">
+		<div class="settings-option">
+			Show FPS
+			<input id="checkbox-fps" checked="true" class="checkbox-setting" type="checkbox">
+		</div>
+		<div class="settings-option">
+			Dev mode
+			<input id="checkbox-dev" class="checkbox-setting" type="checkbox">
+		</div>
+		<div class="settings-option">
+			High Settings
+			<input id="checkbox-highpoly" class="checkbox-setting" type="checkbox">
+		</div>
+
+	</div>
+
+
+	<progress id="stamina-bar" value="240" max="240"></progress>
+
+	<progress id="jump-charge-bar" value="0" max="1"></progress>
+
+	<div id="colision-warning"></div>
+
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "../build/three.module.js",
+				"three/addons/": "./jsm/"
+			}
+		}
+	</script>
+
+    <script type="module">
+
+// Imports
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import Stats from 'three/addons/libs/stats.module.js'; // show fps
+
+const stats = new Stats()
+stats.showPanel(0) // 0: fps, 1: ms, 2: mb, 3+: custom
+stats.dom.style.display = 'none';
+document.body.appendChild(stats.dom)
+
+
+// State variables //
+let upKey = "KeyW";
+let downKey = "KeyS";
+let leftKey = "KeyA";
+let rightKey = "KeyD";
+let sprintKey = "ShiftLeft";
+let jumpKey = "Space";
+
+let loadedFiles = 0;
+let loaded = false;
+let paused = false;
+
+let gameTime = 0;
+let dogGLTF;
+let dogMaterial
+let tilePaths = ["models/gltf/tilebase.glb","models/gltf/tilebase.glb",
+				 "models/gltf/tile2.glb","models/gltf/tile2.glb",
+				 "models/gltf/tile2.glb","models/gltf/tile2.glb",
+				 "models/gltf/tile1.glb","models/gltf/tile1.glb",
+				 "models/gltf/tile1.glb","models/gltf/tile1.glb"];
+let tiles = [];
+let existentTiles = {}
+
+//Movement
+let forward = false;
+let backward = false;
+let leftward = false;
+let rightward = false;
+let sprinting = false;
+let stamina = 240; // max 240
+let movementVector = new THREE.Vector3();
+let prevMovementVector = new THREE.Vector3();
+let currentVector = new THREE.Vector3(1,0,0);
+let cameraVector = new THREE.Vector3();
+let dogFrontPos = new THREE.Vector3();
+let dogBackPos = new THREE.Vector3();
+
+let groundHeight = 0.33;
+let jumpState = 0; //0 = no jump, 1 = start jump, 2 = falling down
+let jumpCharge = 0; //charges jump height when space is held down
+let dogOffset = 1.62; //dogGltf Y position so that feet are at 0
+
+let moveSpeed = 0.1;
+let walkSpeed = 0.1;
+let sprintSpeed = 0.2;
+
+let animMixer;
+let dogAnim;
+
+let targetDistance = 20;
+
+let highsettings = document.getElementById("checkbox-highpoly").checked;
+let shouldReload = false;
+
+let clock = new THREE.Clock(); //to limit fps at 60
+let delta = 0;
+let interval = 1 / 60;
+
+
+// Event Listeners //
+
+window.addEventListener('keydown', (e) =>{
+	if(!paused){
+	switch (e.code) {
+		case leftKey:
+			leftward = true;
+			break;
+		
+		case upKey:
+			forward = true;
+			break;
+			
+		case downKey:
+			backward = true;
+			break;
+		
+		case rightKey:
+			rightward = true;
+			break;
+
+		case sprintKey:
+			sprinting = !sprinting;
+			break;
+
+		case jumpKey:
+			if(jumpCharge < 1 && jumpState == 0){
+				jumpCharge += 0.1;
+			}
+			break;
+		
+		default:
+			break;
+	}
+	console.log(e.code);
+	}
+})
+
+window.addEventListener('keyup', (e) =>{
+	if(!paused){
+	switch (e.code) {
+		case 'KeyA':
+			leftward = false;
+			break;
+		
+		case 'KeyW':
+			forward = false;
+			break;
+			
+		case 'KeyS':
+			backward = false;
+			break;
+		
+		case 'KeyD':
+			rightward = false;
+			break;
+		
+		case 'ShiftLeft':
+			break;
+
+		case 'Space':
+			if(jumpState == 0){
+				jumpState = 1;
+			}
+			break;
+
+		default:
+			break;
+	}
+	console.log(e.code);
+	}
+})
+
+
+window.addEventListener('resize', (e) => {shouldReload = true;}, false);
+
+document.getElementById("settings-button").addEventListener('click',opensettings,false);
+document.getElementById("settings-bg").addEventListener('click',closesettings,false);
+
+/*---------- 3D -----------*/
+
+/* ---- 3D Axis -----
+      	   y 
+	   	   |  z
+	   	   | /
+	 x_____|/
+*/
+
+// Init //
+manageHUD();
+
+let scene = new THREE.Scene();
+
+const cubeTextureLoader = new THREE.CubeTextureLoader();
+cubeTextureLoader.setPath( 'textures/skybox/day/' );
+const skyboxTexture_day = cubeTextureLoader.load( [
+	'sides.png', 'sides.png',
+	'top.png', '../bottom.png',
+	'sides.png', 'sides.png'
+] );
+
+scene.background = skyboxTexture_day;
+
+let camera = new THREE.PerspectiveCamera(10, window.innerWidth / window.innerHeight, 1, 300);
+camera.position.z = 40;
+camera.setFocalLength(15);
+camera.fov = 10;
+
+let grid = [-1,-1,-1,-1,-1,-1,-1,-1,-1]; // ground grid
+let worldCenter = [0,0]; // [x,z]
+let lastmove = "delete";
+
+//gradient maps for the toon shaders
+const threeTone = new THREE.TextureLoader().load('textures/threeTone.jpg');
+threeTone.minFilter = THREE.NearestFilter;
+threeTone.magFilter = THREE.NearestFilter;
+
+const fourTone = new THREE.TextureLoader().load('textures/fourTone.jpg');
+fourTone.minFilter = THREE.NearestFilter;
+fourTone.magFilter = THREE.NearestFilter;
+
+const fiveTone = new THREE.TextureLoader().load('textures/fiveTone.jpg'); // modified for the dog model
+fiveTone.minFilter = THREE.NearestFilter;
+fiveTone.magFilter = THREE.NearestFilter;
+
+
+
+//Meshes
+let charGeometry = new THREE.BoxGeometry(0,0,0);
+let charMaterial = new THREE.MeshToonMaterial({color: 0xa000ff});
+let character = new THREE.Mesh(charGeometry,charMaterial);
+character.position.y += 1.25;
+
+loadDoggoGLTF("models/gltf/dogtest.glb");
+for(let i = 0; i<10; i++){
+	loadTileGLTF(tilePaths[i],i);
+}
+
+let groundPlane = new THREE.Mesh(new THREE.PlaneGeometry(100,100),new THREE.MeshBasicMaterial({color: 0x000020})); // dark plane, only seen when the camera clips through buildings
+groundPlane.rotation.x += -Math.PI/2;
+groundPlane.position.y += -0.1;
+
+//Lights
+const light = new THREE.DirectionalLight(0xd0d0d0, 1);	// sun light
+light.position.set(-10, 10, 5);
+light.castShadow = true;
+
+const ambientLight = new THREE.AmbientLight( 0x505070 ); // soft blueish light
+
+
+scene.add(camera);
+scene.add(light);
+scene.add(light.target);
+scene.add(ambientLight);
+scene.add(character);
+scene.add(groundPlane);
+
+/* Development helpers */
+//const axesHelper = new THREE.AxesHelper( 5 );
+//scene.add( axesHelper );
+
+//Renderer
+let renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setClearColor(new THREE.Color(0x90f0ff));
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+// Add the output of the renderer
+document.body.appendChild(renderer.domElement);
+
+// Controls
+const cameraControls = new OrbitControls( camera, renderer.domElement );
+cameraControls.enableDamping = true;
+cameraControls.enablePan = false;
+cameraControls.rotateSpeed = 1; // 0.7 com pointer lock
+cameraControls.minDistance = 10;
+cameraControls.maxDistance = 20;
+cameraControls.maxPolarAngle = Math.PI/2;
+cameraControls.minPolarAngle = 0.1; //to avoid a camera bug when you look down
+
+//controls.update() must be called after any manual changes to the camera's transform
+cameraControls.update();
+
+// Render the scene
+renderer.render(scene, camera);
+
+
+// Game Loop
+animateloop();
+
+/*--------------------------------------------------------*/
+
+//Functions
+
+function animateloop() {  //max fps = 60
+
+	stats.begin();
+	requestAnimationFrame(animateloop);
+	let d = clock.getDelta();
+	delta += d;
+	if(loaded && delta  > interval){
+
+		adjustSpeed(delta);		// to avoid slower movement when there are less fps
+		generateWorld(100,100);
+		manageStamina();
+		moveCharacter();
+		moveDoggo();
+		handleJump();
+		manageAnimations(d);
+
+		
+		cameraAndGroundColisions();
+		//console.log(currentSquare(dogGLTF.position));
+
+		cameraControls.update();
+		renderer.render(scene,camera);
+		stats.end();
+
+		manageHUD();
+		document.getElementById("loading-screen").style.display = "none";
+
+	}else if(loadedFiles > 10 && !loaded){
+		setDoggoMaterial();
+		dogGLTF.position.y = groundHeight + dogOffset;
+
+		animMixer = new THREE.AnimationMixer(dogGLTF.getObjectByName("Armature"));
+		animMixer.timeScale = 1;
+
+		const skelHelper = new THREE.SkeletonHelper(dogGLTF.getObjectByName("Armature"));
+		//scene.add( skelHelper );
+
+		loaded = true;
+	}
+	delta = delta % interval;
+}
+
+function adjustSpeed(d){
+	walkSpeed = 0.1 + 0.1 * (delta - interval);
+	sprintSpeed = 0.25 + 0.25 * (delta - interval);
+}
+
+function moveDoggo(){
+	if(dogGLTF){
+		let dogVector = character.position.clone();
+		let dogSpeed = character.position.distanceTo(dogGLTF.position) * 0.05;
+		dogVector.addScaledVector(dogGLTF.position,-1);
+
+		dogGLTF.position.x += dogVector.x * dogSpeed;
+		dogGLTF.position.y += dogVector.y * dogSpeed;
+		dogGLTF.position.z += dogVector.z * dogSpeed;
+		dogGLTF.rotation.y = character.rotation.y;
+		cameraControls.target = dogGLTF.position.clone();
+		cameraControls.target.y = groundHeight + 1.62 + (dogGLTF.position.y - groundHeight - 1.62)/3;
+
+		dogFrontPos = dogGLTF.position.clone();
+		dogFrontPos.x += Math.cos(-character.rotation.y - Math.PI/2) * 1;
+		dogFrontPos.z += Math.sin(-character.rotation.y - Math.PI/2) * 1;
+		dogBackPos = dogGLTF.position.clone();
+		dogBackPos.x += Math.cos(-character.rotation.y - Math.PI/2) * -1.8;
+		dogBackPos.z += Math.sin(-character.rotation.y - Math.PI/2) * -1.8;
+
+		groundPlane.position.x = dogGLTF.position.x;
+		groundPlane.position.z = dogGLTF.position.z;
+
+	}
+}
+
+function moveCharacter() {
+
+	movementVector.x = 0;
+	movementVector.y = 0;
+	movementVector.z = 0;
+
+	camera.getWorldDirection(cameraVector);
+	cameraVector.y = 0;
+	cameraVector.normalize();
+	let tempVector = cameraVector.clone();
+
+	if(forward){
+		movementVector.add(tempVector);
+	}
+	if(backward){
+		tempVector.multiplyScalar(-1);
+		movementVector.add(tempVector);
+	}
+	if(rightward){
+		tempVector.setX(-1*cameraVector.z);
+		tempVector.setZ(cameraVector.x);
+		movementVector.add(tempVector);
+	}
+	if(leftward){
+		tempVector.setX(cameraVector.z);
+		tempVector.setZ(-1*cameraVector.x);
+		movementVector.add(tempVector);
+	}
+	movementVector.clampLength(0,1);
+	//console.log(movementVector);
+	if(movementVector.length() > 0){
+		prevMovementVector.copy(movementVector);
+	}
+
+	//update rotation
+	if (forward || backward || rightward || leftward){
+		let angle = angleFromVector(movementVector);
+		console.log("character rotation: ",character.rotation.y);
+		console.log("target angle: ",angle);
+		
+
+		if(Math.abs(character.rotation.y - angle) > Math.PI && character.rotation.y*angle<0){
+			angle = (Math.PI * (Math.abs(character.rotation.y)/character.rotation.y)) + Math.PI/2;
+			if(character.rotation.y == Math.PI/-2){
+				character.rotation.y = 3*Math.PI/2;
+			}else if(character.rotation.y == 3*Math.PI/2){
+				character.rotation.y = Math.PI/-2;
+			}
+		}
+
+		console.log("target angle2: ",angle);
+		if(Math.abs(character.rotation.y - angle) <= 0.15){
+			character.rotation.y = angle;
+		}
+		if(character.rotation.y < angle){
+			character.rotation.y += 0.05;
+		}else if(character.rotation.y > angle){
+			character.rotation.y += -0.05;
+		}
+		
+	}
+
+	checkDogColisions(movementVector);
+
+	//update position
+	character.position.x += movementVector.x*moveSpeed;
+	character.position.y += movementVector.y*moveSpeed;
+	character.position.z += movementVector.z*moveSpeed;
+	camera.position.x += movementVector.x*moveSpeed;
+	camera.position.y += movementVector.y*moveSpeed;
+	camera.position.z += movementVector.z*moveSpeed;
+	//cameraControls.target = character.position;
+	light.position.x += movementVector.x*moveSpeed;
+	light.position.y += movementVector.y*moveSpeed;
+	light.position.z += movementVector.z*moveSpeed;
+	light.target.position.x += movementVector.x*moveSpeed;
+	light.target.position.y += movementVector.y*moveSpeed;
+	light.target.position.z += movementVector.z*moveSpeed;
+	console.log("position: ",character.position," - ",dogGLTF.position);
+}
+
+function handleJump(){
+
+	document.getElementById("jump-charge-bar").value = jumpCharge;
+
+	if(jumpState == 0){
+		character.position.y = groundHeight + dogOffset;
+	}else if(jumpState == 1){
+
+		character.position.y = groundHeight + dogOffset + (0.6+jumpCharge)*2.5;
+		
+	}else if(jumpState == 2){
+		if(dogGLTF.position.y > (groundHeight + dogOffset)){
+			character.position.y += -0.4;
+			if(character.position.y < groundHeight + dogOffset){
+				character.position.y = groundHeight + dogOffset;
+				jumpState = 0;
+				jumpCharge = 0;
+			}
+		}else{
+			character.position.y = groundHeight + dogOffset;
+			jumpState = 0;
+			jumpCharge = 0;
+		}
+	}
+
+	if(jumpState == 1 && Math.abs(dogGLTF.position.y - character.position.y) < 1){
+		jumpState = 2;
+	}
+
+	light.position.y += groundHeight + 1.62 + (dogGLTF.position.y - groundHeight - 1.62)/3 - light.target.position.y;
+	light.target.position.y = groundHeight + 1.62 + (dogGLTF.position.y - groundHeight - 1.62)/3;
+
+
+}
+
+function manageStamina() {
+	console.log("stamina: ", stamina);
+	if(sprinting && stamina > 0 && (forward || rightward || leftward || backward)){
+		moveSpeed = sprintSpeed;
+		stamina += -0.5;
+		setCameraDistance(10);
+	}else if(!(forward || rightward || leftward || backward)){
+		sprinting = false;
+		cameraControls.minDistance = 4;
+		cameraControls.maxDistance = 30;
+		targetDistance = cameraControls.getDistance();
+		if(stamina < 240){
+			stamina += 1;
+		}
+	}else{
+		sprinting = false;
+		if(moveSpeed > walkSpeed){
+			moveSpeed += -0.005;
+		}
+		if((!sprinting || moveSpeed == walkSpeed) && stamina < 240){
+			stamina += 1;
+		}
+		setCameraDistance(targetDistance);
+	}
+
+	document.getElementById("stamina-bar").value = stamina;
+
+}
+
+function setCameraDistance(distance){
+	if(Math.abs(cameraControls.getDistance() - distance) <= 1){
+		if(Math.abs(cameraControls.getDistance() - distance) > 0){
+			
+		}else{
+			cameraControls.minDistance = distance;
+			cameraControls.maxDistance = distance;
+		}
+	}else{
+		if(cameraControls.getDistance() < distance){
+			cameraControls.maxDistance += 1;
+			cameraControls.minDistance += 1;
+		}else if(cameraControls.getDistance() > distance){
+			cameraControls.minDistance += -1;
+			cameraControls.maxDistance += -1;
+		}
+	}
+}
+
+function manageAnimations(d){
+	let clip = THREE.AnimationClip.findByName(dogAnim, "walkcycle");
+	let action_walk = animMixer.clipAction(clip);
+	action_walk.timeScale = 3;
+
+	clip = THREE.AnimationClip.findByName(dogAnim, "tailwag");
+	let action_tail = animMixer.clipAction(clip);
+	action_tail.timeScale = 3;
+
+	if(!action_tail.isRunning()){
+		console.log("anim tail play");
+		action_tail.play();}
+
+	if(!action_walk.isRunning() && (forward || leftward || rightward || backward)){
+		console.log("anim walk play");
+		action_walk.play();
+	}else if(action_walk.isRunning() && !(forward || leftward || rightward || backward)){
+		action_walk.stop();
+	}
+	if(action_walk.isRunning() && sprinting){
+		action_walk.timeScale = 8;
+	}
+	
+	animMixer.update(d);
+}
+
+function loadDoggoGLTF(file){
+	
+	// Instantiate a loader
+	const loader = new GLTFLoader();
+	// Load a glTF resource
+	loader.load(
+		// resource URL
+		file,
+		// called when the resource is loadedFiles
+		function ( gltf ) {
+			dogGLTF = gltf.scene;
+			dogGLTF.scale.set(-0.8,0.8,-0.8);
+			console.log("dooog: ",dogGLTF);
+			scene.add( dogGLTF );
+			loadedFiles += 1;
+			dogAnim = gltf.animations; // Array<THREE.AnimationClip>
+			console.log("dog gltf: ",gltf);
+		},
+		// called while loading is progressing
+		function ( xhr ) {
+			console.log( ( xhr.loadedFiles / xhr.total * 100 ) + '% loadedFiles' );
+		},
+		// called when loading has errors
+		function ( error ) {
+			console.log( 'An error happened' );
+		}
+	);
+}
+
+function setDoggoMaterial(){
+	if(dogGLTF && !dogMaterial){
+		dogGLTF.getObjectByName("dogBody").material = new THREE.MeshToonMaterial({map: dogGLTF.getObjectByName("dogBody").material.map, gradientMap: fiveTone});
+		dogGLTF.getObjectByName("dogOutline").material = new THREE.MeshBasicMaterial({color: 0x000000});
+		dogGLTF.getObjectByName("dogBody").castShadow = true;
+		console.log("material: ",dogGLTF.material);
+	}
+}
+
+function loadTileGLTF(file,index){
+	
+	// Instantiate a loader
+	const loader = new GLTFLoader();
+	// Load a glTF resource
+	loader.load(
+		// resource URL
+		file,
+		// called when the resource is loadedFiles
+		function ( gltf ) {
+			console.log("tilegltf: ");
+			let tile = new THREE.Group();
+			for(let i = 0; i < gltf.scene.children.length; i++){
+				let child = gltf.scene.children[i];
+				console.log("tile child: ", child);
+				let objMaterial;
+				if(child.name.startsWith("t-")){
+					objMaterial = new THREE.MeshToonMaterial({map: child.material.map,
+													 side : THREE.DoubleSide,
+													 bumpMap: child.material.normalMap, bumpScale: 0.5,
+													 gradientMap: threeTone});
+				}else if(child.name.startsWith("o-")){
+					console.log("outline: ",child);
+					objMaterial = new THREE.MeshBasicMaterial({color: 0x000000,
+													 side : THREE.FrontSide});
+				}else if(child.name.startsWith("l-")){
+					console.log("outline: ",child);
+					objMaterial = new THREE.MeshBasicMaterial({color: 0x000000,
+													 side : THREE.DoubleSide,
+													 wireframe: true});
+				}else{
+					objMaterial = new THREE.MeshToonMaterial({map: child.material.map,
+													 bumpMap: child.material.normalMap, bumpScale: 0.5,
+													});
+				}
+				let obj = new THREE.Mesh(child.geometry,objMaterial);
+				obj.scale.copy(child.scale);
+				obj.position.copy(child.position);
+				obj.receiveShadow = true;
+				obj.name = child.name;
+				if(highsettings || !child.name.endsWith("high")){
+					tile.add(obj);
+				}
+				console.log("tile info: ",obj,child);
+			}
+			tiles[index] = tile;
+			console.log("tileee: ",tiles[index]);
+			loadedFiles += 1;
+		},
+		// called while loading is progressing
+		function ( xhr ) {
+			console.log( ( xhr.loadedFiles / xhr.total * 100 ) + '% loadedFiles' );
+		},
+		// called when loading has errors
+		function ( error ) {
+			console.log( 'An error happened' );
+		}
+	);
+}
+
+function deleteMesh(mesh){
+	console.log("deleting mesh: ", mesh);
+	scene.remove(mesh);
+	for(let i = 0; i < mesh.children.length; i++){
+		mesh.children[i].geometry.dispose();
+		mesh.children[i].material.dispose();
+	}
+	mesh = undefined;
+}
+
+function generateTile(random,rot,posX,posZ,tileSize=100){
+
+	//const cityTiles = [0xf05050, 0x50f050, 0x5050f0, 0xff0000, 0x00ff00, 0x0000ff, 0x101010, 0xf0f0f0, 0xffff00, 0xff00ff];
+	//let groundGeometry = new THREE.PlaneGeometry(tileSize,tileSize);
+	/*let groundMaterial = new THREE.MeshToonMaterial({map: tiles[random].material.map,
+													 bumpMap: tiles[random].material.normalMap, bumpScale: 0.5,
+													 gradientMap: threeTone});
+	let ground = new THREE.Mesh(tiles[random].geometry,groundMaterial);*/
+	let ground = tiles[random].clone();
+	ground.rotation.y += rot;
+	ground.receiveShadow = true;
+	
+	ground.position.x = posX;
+	ground.position.z = posZ;
+
+	//ground.scale.set(50,50,50);
+	return ground;
+}
+
+function generateWorld(offsetX=100,offsetZ=100,maxLimit=100){
+
+	let centerX = Math.round(character.position.x/offsetX);
+	let centerZ = Math.round(character.position.z/offsetZ);
+	
+	//console.log("center X and Z: ",centerX,centerZ," / worldCenter: ", worldCenter, " / lastmove: ",lastmove);
+	if(centerX != worldCenter[0] && centerX - worldCenter[0] > 0){ //moved to the left
+		console.log("moved left");
+		lastmove = "left";
+		worldCenter[0] = centerX;
+		deleteMesh(grid[6]);
+		grid[6] = grid[7];
+		deleteMesh(grid[3]);
+		grid[3] = grid[4];
+		deleteMesh(grid[0]);
+		grid[0] = grid[1];
+		console.log(grid);
+
+		grid[7] = grid[8];
+		grid[4] = grid[5];
+		grid[1] = grid[2];
+
+		grid[8] = -1;
+		grid[5] = -1;
+		grid[2] = -1;
+	}
+	if(centerX != worldCenter[0] && centerX - worldCenter[0] < 0){ //moved to the right
+		console.log("moved right");
+		lastmove = "right";
+		worldCenter[0] = centerX;
+		deleteMesh(grid[8]);
+		grid[8] = grid[7];
+		deleteMesh(grid[5]);
+		grid[5] = grid[4];
+		deleteMesh(grid[2]);
+		grid[2] = grid[1];
+		console.log(grid);
+
+		grid[7] = grid[6];
+		grid[4] = grid[3];
+		grid[1] = grid[0];
+
+		grid[6] = -1;
+		grid[3] = -1;
+		grid[0] = -1;
+	}
+	if(centerZ != worldCenter[1] && centerZ - worldCenter[1] > 0){ //moved to the front
+		console.log("moved front");
+		lastmove = "front";
+		worldCenter[1] = centerZ;
+		deleteMesh(grid[2]);
+		grid[2] = grid[5];
+		deleteMesh(grid[1]);
+		grid[1] = grid[4];
+		deleteMesh(grid[0]);
+		grid[0] = grid[3];
+		console.log(grid);
+
+		grid[5] = grid[8];
+		grid[4] = grid[7];
+		grid[3] = grid[6];
+
+		grid[8] = -1;
+		grid[7] = -1;
+		grid[6] = -1;
+	}
+	if(centerZ != worldCenter[1] && centerZ - worldCenter[1] < 0){ //moved to the back
+		console.log("moved back");
+		lastmove = "back";
+		worldCenter[1] = centerZ;
+		deleteMesh(grid[8]);
+		grid[8] = grid[5];
+		deleteMesh(grid[7]);
+		grid[7] = grid[4];
+		deleteMesh(grid[6]);
+		grid[6] = grid[3];
+		console.log(grid);
+
+		grid[5] = grid[2];
+		grid[4] = grid[1];
+		grid[3] = grid[0];
+
+		grid[2] = -1;
+		grid[1] = -1;
+		grid[0] = -1;
+	}
+
+	for(let i=0;i<9;i++){
+		if(grid[i] == -1){
+			let coordZ = Math.floor(i/3);
+			let coordX = i % 3;
+
+			let posX = centerX*offsetX - offsetX + coordX*offsetX;
+			let posZ = centerZ*offsetZ - offsetZ + coordZ*offsetZ;
+
+			if(existentTiles[[posX,posZ]]){
+				grid[i] = generateTile(existentTiles[[posX,posZ]][0],existentTiles[[posX,posZ]][1],posX,posZ);
+			}else{
+				let rnd = Math.round(Math.random()*10);
+				let rot = Math.PI/2 * Math.floor(Math.random()*4);
+				if(posX == 0 && posZ == 0){
+					rnd = 0;
+					rot = Math.PI/2;
+				}
+				grid[i] = generateTile(rnd,rot,posX,posZ);
+				existentTiles[[posX,posZ]] = [rnd,rot];
+			}
+			console.log("world: ",existentTiles);
+			scene.add(grid[i]);
+		}
+	}
+	return grid;
+	
+/* Grid:
+   z
+   | [8][7][6]
+   | [5][4][3]
+   | [2][1][0]
+   |___________-x
+*/
+
+}
+
+function angleFromVector(vector){
+
+	//-z = 0; x = -PI/2
+	let result;
+	let tempVector = vector.clone();
+	if(tempVector.length() > 0){
+		tempVector.setLength(1);
+	}
+	let arcsin = Math.asin(-1*tempVector.x);
+	if(tempVector.z >= 0){
+		result = Math.PI - arcsin;
+	}else{
+		result = arcsin;
+	}
+	return result;
+
+}
+
+
+function checkDogColisions(moveVector){
+
+	let rightVector = new THREE.Vector3();
+	
+	rightVector.setX(-1*moveVector.z);
+	rightVector.setZ(moveVector.x);
+
+	let basePoint = character.position.clone();
+	basePoint.addScaledVector(moveVector,2);
+
+	let goBack = buildingColisions(basePoint) || propCollisions(basePoint);
+
+	let point1b = basePoint.clone();
+	let point2b = basePoint.clone();
+
+	point1b.addScaledVector(rightVector,1);
+	point2b.addScaledVector(rightVector,-1);
+
+	basePoint.addScaledVector(moveVector,1);
+
+	let point1 = basePoint.clone();
+	let point2 = basePoint.clone();
+
+	point1.addScaledVector(rightVector,0.6);
+	point2.addScaledVector(rightVector,-0.6);
+
+
+	document.getElementById("colision-warning").style.backgroundColor = 'green';
+	if(buildingColisions(point1b) || propCollisions(point1b)){
+		document.getElementById("colision-warning").style.backgroundColor = "red";
+		movementVector.addScaledVector(rightVector,-1);
+		movementVector.clampLength(0,1);
+	}
+	if(buildingColisions(point2b) || propCollisions(point2b)){
+		document.getElementById("colision-warning").style.backgroundColor = "red";
+		movementVector.addScaledVector(rightVector,1);
+		movementVector.clampLength(0,1);
+	}
+	if(buildingColisions(point1) || propCollisions(point1)){
+		document.getElementById("colision-warning").style.backgroundColor = "red";
+		movementVector.addScaledVector(rightVector,-1);
+		movementVector.clampLength(0,1);
+	}
+	if(buildingColisions(point2) || propCollisions(point2)){
+		document.getElementById("colision-warning").style.backgroundColor = "red";
+		movementVector.addScaledVector(rightVector,1);
+		movementVector.clampLength(0,1);
+	}
+	if(buildingColisions(basePoint || propCollisions(basePoint))){
+		document.getElementById("colision-warning").style.backgroundColor = "red";
+		movementVector.set(0,0,0);
+	}
+	if(goBack){
+		movementVector.addScaledVector(prevMovementVector,-1);
+	}
+	
+}
+
+function buildingColisions(pos){
+	
+	switch(existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0]){
+		case 0:
+
+			break;
+		case 1:
+
+			break;
+		case 2:
+			if(isOnBlock(pos,11,18,20,27)){  //main house
+				return true;
+			}
+			if(isOnBlock(pos,21,18,27,21)){  //main house's garage
+				return true;
+			}
+			break;
+		case 3:
+			if(isOnBlock(pos,11,18,20,27)){  //main house
+				return true;
+			}
+			if(isOnBlock(pos,21,18,27,21)){  //main house's garage
+				return true;
+			}
+			break;
+		case 4:
+			if(isOnBlock(pos,11,18,20,27)){  //main house
+				return true;
+			}
+			if(isOnBlock(pos,21,18,27,21)){  //main house's garage
+				return true;
+			}
+			break;
+		case 5:
+			if(isOnBlock(pos,11,18,20,27)){  //main house
+				return true;
+			}
+			if(isOnBlock(pos,21,18,27,21)){  //main house's garage
+				return true;
+			}
+			break;
+		case 6:
+			if(isOnBlock(pos,11,18,20,27)){  //main house
+				return true;
+			}
+			if(isOnBlock(pos,21,18,27,21)){  //main house's garage
+				return true;
+			}
+			break;
+		case 7:
+			if(isOnBlock(pos,11,18,20,27)){  //main house
+				return true;
+			}
+			if(isOnBlock(pos,21,18,27,21)){  //main house's garage
+				return true;
+			}
+			break;
+		case 8:
+			if(isOnBlock(pos,11,18,20,27)){  //main house
+				return true;
+			}
+			if(isOnBlock(pos,21,18,27,21)){  //main house's garage
+				return true;
+			}
+			break;
+		case 9:
+			if(isOnBlock(pos,11,18,20,27)){  //main house
+				return true;
+			}
+			if(isOnBlock(pos,21,18,27,21)){  //main house's garage
+				return true;
+			}
+			break;
+		default:
+			return false;
+			break;
+	}
+
+	if(existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 1 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 6){
+			if(isOnBlock(pos,1,1,1,1)){  //tree1
+				return true;
+			}
+			if(isOnBlock(pos,29,30,29,30)){  //tree2
+				return true;
+			}
+			if(isOnBlock(pos,0,31,0,31)){  //tree3
+				return true;
+			}
+			
+		}
+	return false;
+}
+
+function propCollisions(pos){
+	if(existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 1 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 6){
+	if((dogGLTF.position.y < groundHeight + dogOffset + 0.1)){
+		if(isOnSmallBlock(pos,44,112,44,123)){  //fence
+			return true;
+		}
+		if(isOnSmallBlock(pos,44,123,83,123)){  //fence
+			return true;
+		}
+		if(isOnSmallBlock(pos,83,112,83,123)){  //fence
+			return true;
+		}
+	}
+
+	if(dogGLTF.position.y < 0.44 + dogOffset){
+		if(isOnSmallBlock(pos,0,118,10,122)){  //bench1
+			return true;
+		}
+	}
+	}
+	
+}
+
+function isOnSmallSquare(pos1,pos2,squareX,squareZ){
+	let square1 = currentSmallSquare(pos1);
+	let square2 = currentSmallSquare(pos2);
+	if((square1[0] >= squareX && square2[0] <= squareX) || (square1[0] <= squareX && square2[0] >= squareX)){
+		if((square1[1] >= squareZ && square2[1] <= squareZ) || (square1[1] <= squareZ && square2[1] >= squareZ)){
+			return true;
+		}
+	}
+	return false;
+}
+
+function isOnTopOfBlock(pos1,pos2,square1X,square1Z,square2X,square2Z){
+	for(let x = square1X; x<=square2X;x++){
+		for(let z = square1Z; z<=square2Z;z++){
+			if(isOnSmallSquare(pos1,pos2,x,z)){
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+function cameraAndGroundColisions(){
+
+	//character y position
+	if(isOnBlock(dogGLTF.position,0,4,8,8) || isOnBlock(dogGLTF.position,4,0,8,8) || isOnBlock(dogGLTF.position,0,23,8,27) ||
+	   isOnBlock(dogGLTF.position,4,11,8,31) || isOnBlock(dogGLTF.position,5,11,27,15) || isOnBlock(dogGLTF.position,23,0,27,15) ||
+	   isOnBlock(dogGLTF.position,23,4,31,8) || isOnBlock(dogGLTF.position,23,23,27,31) || isOnBlock(dogGLTF.position,23,23,31,27)){
+		groundHeight = 0;
+		document.getElementById("colision-warning").style.backgroundColor = 'blue';
+	}else if((isOnTopOfBlock(dogFrontPos,dogBackPos,44,112,44,123) || 
+			 isOnTopOfBlock(dogFrontPos,dogBackPos,44,123,83,123) || 
+			 isOnTopOfBlock(dogFrontPos,dogBackPos,83,112,83,123)) && 
+			 (existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 1 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 6) &&
+			 (character.position.y >= groundHeight)){	
+		document.getElementById("colision-warning").style.backgroundColor = 'pink';
+		groundHeight = 3;
+	}else if(isOnTopOfBlock(dogFrontPos,dogBackPos,0,118,10,122) && 
+			 (existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 1 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 6) &&
+			 (character.position.y >= groundHeight)){	
+		document.getElementById("colision-warning").style.backgroundColor = 'pink';
+		groundHeight = 1.8;
+	}else if(isOnBlock(dogGLTF.position,0,0,31,31)){
+		groundHeight = 0.43;
+	}
+	//camera colisions
+	if(buildingColisions(camera.position)){
+		console.log("colision");
+		document.getElementById("colision-warning").style.backgroundColor = 'yellow';
+		let camVector = new THREE.Vector3();
+		camera.getWorldDirection(camVector);
+
+
+		camera.position.x += camVector.x * 0.5;
+		camera.position.y += camVector.y * 0.5;
+		camera.position.z += camVector.z * 0.5;
+		
+		cameraControls.maxDistance = cameraControls.getDistance();
+	}else if(cameraControls.maxDistance < 20){
+		cameraControls.maxDistance += 1;
+	}
+
+	console.log("camera distance: ",camera.position.distanceTo(dogGLTF.position));
+
+}
+
+function currentSquare(pos){
+/*  z  
+    | 
+	|_____x
+
+*/
+	let tempVector = new THREE.Vector3(pos.x - worldCenter[0]*100 + 50,pos.y,pos.z - worldCenter[1]*100 - 50); // position relative to top left of the tile
+
+	let column = Math.floor(tempVector.x/3.125);
+	let row = Math.floor(tempVector.z/-3.125);
+	
+	let rot = grid[4].rotation.y/(Math.PI/2);
+
+	//console.log("square: ", [column,row], "rot: ", rot, "vector: ", tempVector, "world center: ", worldCenter);
+
+	switch (rot) {
+				case 0:
+					return [column,row];
+					break;
+			
+				case 1:
+					return [row,31-column];
+					break;
+
+				case 2:
+					return [31-column,31-row];
+					break;
+
+				case 3:
+					return [31-row,column];
+					break;
+
+				default:
+					break;
+			}
+
+}
+
+function currentSmallSquare(pos){
+/*  z  
+    | 
+	|_____x
+
+*/
+	let tempVector = new THREE.Vector3(pos.x - worldCenter[0]*100 + 50,pos.y,pos.z - worldCenter[1]*100 - 50); // position relative to top left of the tile
+
+	let column = Math.floor(tempVector.x/0.78125);
+	let row = Math.floor(tempVector.z/-0.78125);
+	
+	let rot = grid[4].rotation.y/(Math.PI/2);
+
+	//console.log("square: ", [column,row], "rot: ", rot, "vector: ", tempVector, "world center: ", worldCenter);
+
+	switch (rot) {
+				case 0:
+					return [column,row];
+					break;
+			
+				case 1:
+					return [row,127-column];
+					break;
+
+				case 2:
+					return [127-column,127-row];
+					break;
+
+				case 3:
+					return [127-row,column];
+					break;
+
+				default:
+					break;
+			}
+
+}
+
+/* Squares (32x32) (outdated, delete later)
+ z
+ |	[][][ ][ ][ ][]
+ |	[][][ ][ ][ ][]
+ |	[][][1][s][s][] > squareZ
+ |	[][][s][s][2][]
+ |	[][][ ][ ][ ][]
+ |		 v
+ |	  squareX	
+ |_________________x	   
+*/
+
+function isOnBlock(position,squareX1,squareZ1,squareX2,squareZ2){
+	let square = currentSquare(position);
+	for(let x = squareX1; x<=squareX2;x++){
+		for(let z = squareZ1; z<=squareZ2;z++){
+			if(square[0] == x && square[1] == z){
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+function isOnSmallBlock(position,squareX1,squareZ1,squareX2,squareZ2){
+	let square = currentSmallSquare(position);
+	for(let x = squareX1; x<=squareX2;x++){
+		for(let z = squareZ1; z<=squareZ2;z++){
+			if(square[0] == x && square[1] == z){
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+function manageHUD(){
+	if(document.getElementById("checkbox-highpoly").checked != highsettings){
+		shouldReload = true;
+	}else{
+		shouldReload = false;
+	}
+
+	if(document.getElementById("checkbox-fps").checked){						// shows/hides fps
+		stats.dom.style.display = 'initial';
+	}else{
+		stats.dom.style.display = 'none';
+	}
+	if(document.getElementById("checkbox-dev").checked){						// enables development helpers
+		interval = 1/144;
+		stamina = 240;
+		document.getElementById("colision-warning").style.display = 'initial';
+		document.getElementById("jump-charge-bar").style.display = 'initial';
+		
+	}else{
+		interval = 1/60;
+		document.getElementById("colision-warning").style.display = 'none';
+		document.getElementById("jump-charge-bar").style.display = 'none';
+	}
+
+	if(shouldReload){															// shows reload warning
+		document.getElementById("reload-warning").style.display = 'initial';
+	}else{
+		document.getElementById("reload-warning").style.display = 'none';
+	}
+}
+
+function opensettings(){
+	document.getElementById("settings-bg").style.display = 'initial';
+	document.getElementById("settings-page").style.display = 'initial';
+	paused = true;
+
+}
+
+function closesettings(){
+	document.getElementById("settings-bg").style.display = 'none';
+	document.getElementById("settings-page").style.display = 'none';
+	paused = false;
+
+}
+
+
+    </script>
+
+</body>
+
+</html>
