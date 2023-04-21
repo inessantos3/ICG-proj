@@ -59,6 +59,9 @@
 			progress::-moz-progress-bar {
 			background: rgb(255, 180, 40);
 			}
+			progress::-webkit-progress-value {
+				 background: rgb(255, 180, 40); 
+			}
 
 		#jump-charge-bar {
 			position: absolute;
@@ -207,7 +210,8 @@
 // Imports
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { OrbitControlsModified } from 'three/addons/controls/OrbitControlsModified.js'; // this one only works on Firefox and I can't understand why.
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';					// If another browser is used the original will be used (must drag the mouse to move camera)
 import Stats from 'three/addons/libs/stats.module.js'; // show fps
 
 const stats = new Stats()
@@ -446,7 +450,12 @@ renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
 // Controls
-const cameraControls = new OrbitControls( camera, renderer.domElement );
+let cameraControls;
+if(typeof InstallTrigger !== 'undefined'){
+	cameraControls = new OrbitControlsModified( camera, renderer.domElement );
+}else{
+	cameraControls = new OrbitControls( camera, renderer.domElement );
+}
 cameraControls.enableDamping = true;
 cameraControls.enablePan = false;
 cameraControls.rotateSpeed = 1; // 0.7 com pointer lock
