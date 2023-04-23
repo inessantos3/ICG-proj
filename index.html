@@ -260,7 +260,8 @@ let dogBackPos = new THREE.Vector3();
 let groundHeight = 0.33;
 let jumpState = 0; //0 = no jump, 1 = start jump, 2 = falling down
 let jumpCharge = 0; //charges jump height when space is held down
-let dogOffset = 1.62; //dogGltf Y position so that feet are at 0
+let dogOffset = 1.64; //dogGltf Y position so that feet are at 0
+let gravVel = 0;
 
 let moveSpeed = 0.1;
 let walkSpeed = 0.1;
@@ -268,6 +269,11 @@ let sprintSpeed = 0.2;
 
 let animMixer;
 let dogAnim;
+
+let action_walk;
+let action_idle;
+let action_tail;
+let action_jump;
 
 let targetDistance = 20;
 
@@ -512,6 +518,8 @@ function animateloop() {  //max fps = 60
 		animMixer = new THREE.AnimationMixer(dogGLTF.getObjectByName("Armature"));
 		animMixer.timeScale = 1;
 
+		initAnimations();
+
 		const skelHelper = new THREE.SkeletonHelper(dogGLTF.getObjectByName("Armature"));
 		//scene.add( skelHelper );
 
@@ -638,6 +646,12 @@ function handleJump(){
 
 	if(jumpState == 0){
 		character.position.y = groundHeight + dogOffset;
+		if(dogGLTF.position.y > character.position.y){
+			gravVel += 0.02
+			dogGLTF.position.y += -1 * gravVel;
+		}else{
+			dogGLTF.position.y = character.position.y;
+		}
 	}else if(jumpState == 1){
 
 		character.position.y = groundHeight + dogOffset + (0.6+jumpCharge)*2.5;
@@ -645,15 +659,19 @@ function handleJump(){
 	}else if(jumpState == 2){
 		if(dogGLTF.position.y > (groundHeight + dogOffset)){
 			character.position.y += -0.4;
+			gravVel += 0.04
+			dogGLTF.position.y += -1 * gravVel;
 			if(character.position.y < groundHeight + dogOffset){
 				character.position.y = groundHeight + dogOffset;
 				jumpState = 0;
 				jumpCharge = 0;
+				gravVel = 0;
 			}
 		}else{
 			character.position.y = groundHeight + dogOffset;
 			jumpState = 0;
 			jumpCharge = 0;
+			gravVel = 0;
 		}
 	}
 
@@ -715,29 +733,69 @@ function setCameraDistance(distance){
 	}
 }
 
-function manageAnimations(d){
+function initAnimations(){
 	let clip = THREE.AnimationClip.findByName(dogAnim, "walkcycle");
-	let action_walk = animMixer.clipAction(clip);
+	action_walk = animMixer.clipAction(clip);
 	action_walk.timeScale = 3;
+	action_walk.weight = 0;
 
 	clip = THREE.AnimationClip.findByName(dogAnim, "tailwag");
-	let action_tail = animMixer.clipAction(clip);
-	action_tail.timeScale = 3;
+	action_tail = animMixer.clipAction(clip);
+	action_tail.timeScale = 2;
+
+	clip = THREE.AnimationClip.findByName(dogAnim, "idle");
+	action_idle = animMixer.clipAction(clip);
+	action_idle.timeScale = 3;
+	action_idle.play();
+
+	clip = THREE.AnimationClip.findByName(dogAnim, "jump");
+	action_jump = animMixer.clipAction(clip);
+	action_jump.timeScale = 7;
+	action_jump.loop = THREE.LoopOnce;
+}
+
+function manageAnimations(d){
 
 	if(!action_tail.isRunning()){
 		console.log("anim tail play");
 		action_tail.play();}
 
-	if(!action_walk.isRunning() && (forward || leftward || rightward || backward)){
+	if((forward || leftward || rightward || backward)){
 		console.log("anim walk play");
+		if(action_walk.weight < 1){
+			action_walk.weight += 0.05;
+		}
 		action_walk.play();
 	}else if(action_walk.isRunning() && !(forward || leftward || rightward || backward)){
-		action_walk.stop();
+		action_walk.weight += -0.05;
+		if(action_walk.weight <= 0){
+			action_walk.weight = 0;
+			action_walk.stop();
+		}
 	}
 	if(action_walk.isRunning() && sprinting){
 		action_walk.timeScale = 8;
 	}
 	
+	if((jumpState == 0) && !action_jump.isRunning()){
+		action_jump.weight = 0;
+		action_jump.stop();
+		action_jump.reset();
+
+	}else if(jumpState == 1){
+		action_jump.weight += 0.2;
+		action_jump.timeScale = 9 - jumpCharge*2;
+		action_jump.play();
+	}else if((jumpState == 0) && action_jump.isRunning()){
+		action_jump.weight += -0.2;
+	}
+
+	action_idle.weight = 1 - action_jump.weight - action_walk.weight;
+	if(action_idle.weight < 0){
+		action_idle.weight = 0;
+	}
+
+
 	animMixer.update(d);
 }
 
