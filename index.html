@@ -312,7 +312,7 @@ window.addEventListener('keydown', (e) =>{
 
 		case jumpKey:
 			if(jumpCharge < 1 && jumpState == 0){
-				jumpCharge += 0.1;
+				jumpCharge += 0.2;
 			}
 			break;
 		
@@ -544,7 +544,8 @@ function moveDoggo(){
 		dogGLTF.position.z += dogVector.z * dogSpeed;
 		dogGLTF.rotation.y = character.rotation.y;
 		cameraControls.target = dogGLTF.position.clone();
-		cameraControls.target.y = groundHeight + 1.62 + (dogGLTF.position.y - groundHeight - 1.62)/3;
+		
+		cameraControls.target.y = cameraControls.target.y / 3  + dogOffset;
 
 		dogFrontPos = dogGLTF.position.clone();
 		dogFrontPos.x += Math.cos(-character.rotation.y - Math.PI/2) * 1;
@@ -659,7 +660,7 @@ function handleJump(){
 	}else if(jumpState == 2){
 		if(dogGLTF.position.y > (groundHeight + dogOffset)){
 			character.position.y += -0.4;
-			gravVel += 0.04
+			gravVel += 0.03;
 			dogGLTF.position.y += -1 * gravVel;
 			if(character.position.y < groundHeight + dogOffset){
 				character.position.y = groundHeight + dogOffset;
@@ -775,6 +776,8 @@ function manageAnimations(d){
 	}
 	if(action_walk.isRunning() && sprinting){
 		action_walk.timeScale = 8;
+	}else{
+		action_walk.timeScale = 3;
 	}
 	
 	if((jumpState == 0) && !action_jump.isRunning()){
@@ -784,7 +787,7 @@ function manageAnimations(d){
 
 	}else if(jumpState == 1){
 		action_jump.weight += 0.2;
-		action_jump.timeScale = 9 - jumpCharge*2;
+		action_jump.timeScale = 9 - jumpCharge*4;
 		action_jump.play();
 	}else if((jumpState == 0) && action_jump.isRunning()){
 		action_jump.weight += -0.2;
@@ -1078,7 +1081,7 @@ function checkDogColisions(moveVector){
 	let basePoint = character.position.clone();
 	basePoint.addScaledVector(moveVector,2);
 
-	let goBack = buildingColisions(basePoint) || propCollisions(basePoint);
+	let goBack = buildingColisions(basePoint) || propCollisions(basePoint) || buildingColisions(dogFrontPos);
 
 	let point1b = basePoint.clone();
 	let point2b = basePoint.clone();
@@ -1221,7 +1224,7 @@ function buildingColisions(pos){
 
 function propCollisions(pos){
 	if(existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 1 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 6){
-	if((dogGLTF.position.y < groundHeight + dogOffset + 0.1)){
+	if((dogGLTF.position.y < groundHeight + dogOffset + 2)){
 		if(isOnSmallBlock(pos,44,112,44,123)){  //fence
 			return true;
 		}
