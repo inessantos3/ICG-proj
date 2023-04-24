@@ -288,6 +288,7 @@ let clock = new THREE.Clock(); //to limit fps at 60
 let delta = 0;
 let interval = 1 / 60;
 
+let points = 0;
 
 // Event Listeners //
 
@@ -506,7 +507,7 @@ function animateloop() {  //max fps = 60
 		moveDoggo();
 		handleJump();
 		manageAnimations(d);
-
+		catchTreats();
 		
 		cameraAndGroundColisions();
 		//console.log(currentSquare(dogGLTF.position));
@@ -958,9 +959,20 @@ function addTreats(posX, posZ){
 		treats[[rndX,rndZ]] = treatTemp;
 
 		scene.add(treats[[rndX,rndZ]]);
-
 	}
+}
 
+function catchTreats(){
+	for (const [key, value] of Object.entries(treats)) {
+				if(value.position.distanceTo(dogGLTF.position) < 1.5){
+					deleteMesh(value);
+					delete treats[key];
+
+					stamina += 30;
+					points += 10;
+					console.log("Points: ", points);
+				}
+			}
 }
 
 function generateTile(random,rot,posX,posZ,tileSize=100){
@@ -1088,13 +1100,10 @@ function generateWorld(offsetX=100,offsetZ=100,maxLimit=100){
 			scene.add(grid[i]);
 
 			for (const [key, value] of Object.entries(treats)) {
-  				console.log("keys: ",key[0],key[1], value, worldCenter);
 				if(Math.abs(value.position.x - worldCenter[0]*100) > 150){
-					console.log("wiw");
 					deleteMesh(value);
 				}
 				if(Math.abs(value.position.z - worldCenter[1]*100) > 150){
-					console.log("wiw");
 					deleteMesh(value);
 				}
 				
