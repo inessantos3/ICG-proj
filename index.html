@@ -241,7 +241,10 @@ let tilePaths = ["models/gltf/tilebase.glb","models/gltf/tilebase.glb",
 				 "models/gltf/tile1.glb","models/gltf/tile1.glb",
 				 "models/gltf/tile1.glb","models/gltf/tile1.glb"];
 let tiles = [];
-let existentTiles = {}
+let existentTiles = {};
+
+let treats = {};
+let treatsOnTile = {};
 
 //Movement
 let forward = false;
@@ -418,6 +421,9 @@ let charGeometry = new THREE.BoxGeometry(0,0,0);
 let charMaterial = new THREE.MeshToonMaterial({color: 0xa000ff});
 let character = new THREE.Mesh(charGeometry,charMaterial);
 character.position.y += 1.25;
+
+let treatGeometry = new THREE.SphereGeometry( 1, 10, 10 );
+let treatBase = new THREE.Mesh(treatGeometry,charMaterial);
 
 loadDoggoGLTF("models/gltf/dogtest.glb");
 for(let i = 0; i<10; i++){
@@ -759,12 +765,15 @@ function initAnimations(){
 	action_run = animMixer.clipAction(clip);
 	action_run.timeScale = 2.4;
 	action_run.weight = 0;
+	action_run.zeroSlopeAtStart = false;
+	action_run.zeroSlopeAtEnd = false;
 }
 
 function manageAnimations(d){
 
 	if(!action_tail.isRunning()){
 		console.log("anim tail play");
+		action_tail.weight = 10;
 		action_tail.play();}
 
 	if((forward || leftward || rightward || backward)){
@@ -774,6 +783,10 @@ function manageAnimations(d){
 			}
 			action_walk.weight += -0.1;
 			action_run.play();
+			if(action_run.weight >= 1){
+				action_walk.weight = 0;
+				action_run.weight = 2;
+			}
 		}else{
 			if(action_walk.weight < 1){
 				action_walk.weight += 0.05;
@@ -930,14 +943,28 @@ function deleteMesh(mesh){
 	mesh = undefined;
 }
 
+function addTreats(posX, posZ){
+
+	for(let i = 0; i < 4; i++){
+		let rndX = Math.random()*100 - 50 + posX;
+		let rndZ = Math.random()*100 - 50 + posZ;
+		while(treats[rndX,rndZ] != undefined){
+			rndX = Math.random()*100 - 50 + posX;
+			rndZ = Math.random()*100 - 50 + posZ;
+		}
+
+		let treatTemp = treatBase.clone();
+		treatTemp.position.set(rndX, 2, rndZ);
+		treats[[rndX,rndZ]] = treatTemp;
+
+		scene.add(treats[[rndX,rndZ]]);
+
+	}
+
+}
+
 function generateTile(random,rot,posX,posZ,tileSize=100){
 
-	//const cityTiles = [0xf05050, 0x50f050, 0x5050f0, 0xff0000, 0x00ff00, 0x0000ff, 0x101010, 0xf0f0f0, 0xffff00, 0xff00ff];
-	//let groundGeometry = new THREE.PlaneGeometry(tileSize,tileSize);
-	/*let groundMaterial = new THREE.MeshToonMaterial({map: tiles[random].material.map,
-													 bumpMap: tiles[random].material.normalMap, bumpScale: 0.5,
-													 gradientMap: threeTone});
-	let ground = new THREE.Mesh(tiles[random].geometry,groundMaterial);*/
 	let ground = tiles[random].clone();
 	ground.rotation.y += rot;
 	ground.receiveShadow = true;
@@ -945,6 +972,7 @@ function generateTile(random,rot,posX,posZ,tileSize=100){
 	ground.position.x = posX;
 	ground.position.z = posZ;
 
+	addTreats(posX,posZ);
 	//ground.scale.set(50,50,50);
 	return ground;
 }
@@ -1058,6 +1086,20 @@ function generateWorld(offsetX=100,offsetZ=100,maxLimit=100){
 			}
 			console.log("world: ",existentTiles);
 			scene.add(grid[i]);
+
+			for (const [key, value] of Object.entries(treats)) {
+  				console.log("keys: ",key[0],key[1], value, worldCenter);
+				if(Math.abs(value.position.x - worldCenter[0]*100) > 150){
+					console.log("wiw");
+					deleteMesh(value);
+				}
+				if(Math.abs(value.position.z - worldCenter[1]*100) > 150){
+					console.log("wiw");
+					deleteMesh(value);
+				}
+				
+			}
+
 		}
 	}
 	return grid;
