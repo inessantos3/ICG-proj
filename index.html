@@ -274,6 +274,7 @@ let action_walk;
 let action_idle;
 let action_tail;
 let action_jump;
+let action_run;
 
 let targetDistance = 20;
 
@@ -753,6 +754,11 @@ function initAnimations(){
 	action_jump = animMixer.clipAction(clip);
 	action_jump.timeScale = 7;
 	action_jump.loop = THREE.LoopOnce;
+
+	clip = THREE.AnimationClip.findByName(dogAnim, "runcycle");
+	action_run = animMixer.clipAction(clip);
+	action_run.timeScale = 2.4;
+	action_run.weight = 0;
 }
 
 function manageAnimations(d){
@@ -762,24 +768,38 @@ function manageAnimations(d){
 		action_tail.play();}
 
 	if((forward || leftward || rightward || backward)){
-		console.log("anim walk play");
-		if(action_walk.weight < 1){
-			action_walk.weight += 0.05;
+		if(sprinting){
+			if(action_run.weight < 1){
+				action_run.weight += 0.05;
+			}
+			action_walk.weight += -0.1;
+			action_run.play();
+		}else{
+			if(action_walk.weight < 1){
+				action_walk.weight += 0.05;
+			}
+			action_run.weight += -0.1;
+			action_walk.play();
+
 		}
-		action_walk.play();
-	}else if(action_walk.isRunning() && !(forward || leftward || rightward || backward)){
+		
+	}else if(action_walk.weight > 0){
 		action_walk.weight += -0.05;
-		if(action_walk.weight <= 0){
+		
+	}else if(action_run.weight > 0){
+		action_run.weight += -0.1;
+	}
+
+	if(action_walk.weight <= 0){
 			action_walk.weight = 0;
 			action_walk.stop();
 		}
-	}
-	if(action_walk.isRunning() && sprinting){
-		action_walk.timeScale = 8;
-	}else{
-		action_walk.timeScale = 3;
-	}
-	
+	if(action_run.weight <= 0){
+			action_run.weight = 0;
+			action_run.stop();
+		}
+
+
 	if((jumpState == 0) && !action_jump.isRunning()){
 		action_jump.weight = 0;
 		action_jump.stop();
