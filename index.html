@@ -152,6 +152,10 @@
 			padding: 5%;
 		}
 
+		#animSpeed {
+			width: 85%
+		}
+
 		.settings-option {
 			margin: 5%;
 			left: 0%;
@@ -174,7 +178,7 @@
 
 			position: absolute;
 			bottom: 5%;
-			height: 5%;
+			width: 90%
 			
 		}
 
@@ -211,8 +215,11 @@
 			High Settings
 			<input id="checkbox-highpoly" class="checkbox-setting" type="checkbox">
 		</div>
+		
 		<div class="settings-text">
-			Animations will display abnormally if your monitor isn't working at 60Hz 
+			<p>Adjust animation speed:</p>
+			<input type="range" id="animSpeed" name="animSpeed" min="0" max="50">
+			
 		</div>
 
 	</div>
@@ -309,6 +316,8 @@ let action_idle;
 let action_tail;
 let action_jump;
 let action_run;
+
+let tailSpeed = 2;
 
 let targetDistance = 20;
 
@@ -808,6 +817,13 @@ function manageAnimations(d){
 		action_tail.weight = 10;
 		action_tail.play();}
 
+	action_tail.timeScale = tailSpeed;
+	/*if(tailSpeed < 0.1){
+		action_tail.weight += -1;
+	}else if(action_tail.weight < 10){
+		action_tail.weight += 1;
+	} fix idle anim tail first*/
+
 	if((forward || leftward || rightward || backward)){
 		if(sprinting){
 			if(action_run.weight < 1){
@@ -851,7 +867,7 @@ function manageAnimations(d){
 		action_jump.reset();
 
 	}else if(jumpState == 1){
-		action_jump.weight += 0.2;
+		action_jump.weight += 0.3;
 		action_jump.timeScale = 9 - jumpCharge*4;
 		action_jump.play();
 	}else if((jumpState == 0) && action_jump.isRunning()){
@@ -1038,6 +1054,9 @@ function catchTreats(){
 					deleteMesh(value);
 					delete treats[key];
 
+					if(tailSpeed < 2){
+						tailSpeed += 0.5
+					}
 					stamina += 30;
 					if(stamina > 240){stamina = 240;}
 					points += 10;
@@ -1045,6 +1064,9 @@ function catchTreats(){
 					console.log("Points: ", points);
 				}
 			}
+	if(tailSpeed > 0.2){
+		tailSpeed += -0.001;
+	}
 }
 
 function generateTile(random,rot,posX,posZ,tileSize=100){
@@ -1429,7 +1451,7 @@ function cameraAndGroundColisions(){
 			 (existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 1 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 6) &&
 			 (character.position.y >= groundHeight)){	
 		document.getElementById("colision-warning").style.backgroundColor = 'pink';
-		groundHeight = 1.8;
+		groundHeight = 1.95; //bench
 	}else if(isOnBlock(dogGLTF.position,0,0,31,31)){
 		groundHeight = 0.43;
 	}
