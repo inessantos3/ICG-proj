@@ -156,6 +156,19 @@
 			width: 85%
 		}
 
+		#StartButton {
+			background-color: rgb(255, 116, 36);
+			color: white;
+
+			width: 40px;
+			height: 20px;
+			position: absolute;
+			z-index: 2;
+
+			top: 10%;
+			left: 1%;
+		}
+
 		.settings-option {
 			margin: 5%;
 			left: 0%;
@@ -217,12 +230,14 @@
 		</div>
 		
 		<div class="settings-text">
-			<p>Adjust animation speed:</p>
-			<input type="range" id="animSpeed" name="animSpeed" min="0" max="50">
+			<p id="animSpeedText">Adjust animation speed:</p>
+			<input type="range" id="animSpeed" name="animSpeed" min="0" max="50" value=10>
 			
 		</div>
 
 	</div>
+
+	<div id="StartButton">Start</div>
 
 	<div id="scoreboard">
 		<p id="score">Score: 0</p>
@@ -269,6 +284,7 @@ let jumpKey = "Space";
 let loadedFiles = 0;
 let loaded = false;
 let paused = false;
+let started = false;
 
 let gameTime = 0;
 let dogGLTF;
@@ -311,6 +327,8 @@ let sprintSpeed = 0.2;
 let animMixer;
 let dogAnim;
 
+let animSpeed = 1;
+
 let action_walk;
 let action_idle;
 let action_tail;
@@ -333,7 +351,7 @@ let points = 0;
 // Event Listeners //
 
 window.addEventListener('keydown', (e) =>{
-	if(!paused){
+	if(!paused && started){
 	switch (e.code) {
 		case leftKey:
 			leftward = true;
@@ -369,7 +387,7 @@ window.addEventListener('keydown', (e) =>{
 })
 
 window.addEventListener('keyup', (e) =>{
-	if(!paused){
+	if(!paused && started){
 	switch (e.code) {
 		case 'KeyA':
 			leftward = false;
@@ -409,6 +427,8 @@ window.addEventListener('resize', (e) => {shouldReload = true;}, false);
 document.getElementById("settings-button").addEventListener('click',opensettings,false);
 document.getElementById("settings-bg").addEventListener('click',closesettings,false);
 
+document.getElementById("StartButton").addEventListener('click', (e) => {started = true;},false);
+
 /*---------- 3D -----------*/
 
 /* ---- 3D Axis -----
@@ -434,7 +454,8 @@ const skyboxTexture_day = cubeTextureLoader.load( [
 scene.background = skyboxTexture_day;
 
 let camera = new THREE.PerspectiveCamera(10, window.innerWidth / window.innerHeight, 1, 300);
-camera.position.z = 40;
+camera.position.x = -0.6;
+camera.position.z = -1;
 camera.setFocalLength(15);
 camera.fov = 10;
 
@@ -462,6 +483,7 @@ let charGeometry = new THREE.BoxGeometry(0,0,0);
 let charMaterial = new THREE.MeshToonMaterial({color: 0xa000ff});
 let character = new THREE.Mesh(charGeometry,charMaterial);
 character.position.y += 1.25;
+character.position.x += -2;
 
 let treatGeometry = new THREE.SphereGeometry( 1, 10, 10 );
 let treatBase = new THREE.Mesh(treatGeometry,charMaterial);
@@ -519,19 +541,80 @@ cameraControls.maxDistance = 20;
 cameraControls.maxPolarAngle = Math.PI/2;
 cameraControls.minPolarAngle = 0.1; //to avoid a camera bug when you look down
 
+cameraControls.enabled = false;
+
 //controls.update() must be called after any manual changes to the camera's transform
 cameraControls.update();
 
 // Render the scene
 renderer.render(scene, camera);
 
+//Start menu loop
+waitStart();
 
 // Game Loop
-animateloop();
+//animateloop();
 
 /*--------------------------------------------------------*/
 
 //Functions
+
+function waitStart() {
+	stats.begin();
+	if(!started || Math.abs(cameraControls.getAzimuthalAngle()) > 1.4){
+		requestAnimationFrame(waitStart);
+		let d = clock.getDelta();
+		delta += d;
+		if(loaded && delta  > interval){
+
+			adjustSpeed(delta);		// to avoid slower movement when there are less fps
+			generateWorld(100,100);
+			manageStamina();
+			moveCharacter();
+			moveDoggo();
+			handleJump();
+			manageAnimations(d);
+			catchTreats();
+			
+			cameraAndGroundColisions();
+
+			cameraControls.update();
+			renderer.render(scene,camera);
+			stats.end();
+
+			manageHUD();
+			document.getElementById("loading-screen").style.display = "none";
+
+			if(started){
+				cameraControls.autoRotate = true;
+				cameraControls.autoRotateSpeed = 50;
+				cameraControls.maxPolarAngle = cameraControls.getPolarAngle() - 0.014;
+				document.getElementById("StartButton").style.display = "none";
+			}
+
+
+		}else if(loadedFiles > 10 && !loaded){
+			setDoggoMaterial();
+			dogGLTF.position.y = groundHeight + dogOffset;
+
+			animMixer = new THREE.AnimationMixer(dogGLTF.getObjectByName("Armature"));
+			animMixer.timeScale = 1;
+
+			initAnimations();
+
+			const skelHelper = new THREE.SkeletonHelper(dogGLTF.getObjectByName("Armature"));
+			//scene.add( skelHelper );
+
+			loaded = true;
+		}
+		delta = delta % interval;
+	}else{
+		cameraControls.maxPolarAngle = Math.PI/2;
+		cameraControls.autoRotate = false;
+		cameraControls.enabled = true;
+		animateloop();
+	}
+}
 
 function animateloop() {  //max fps = 60
 
@@ -555,6 +638,8 @@ function animateloop() {  //max fps = 60
 		cameraControls.update();
 		renderer.render(scene,camera);
 		stats.end();
+
+		console.log("treats: ", treats);
 
 		manageHUD();
 		document.getElementById("loading-screen").style.display = "none";
@@ -812,6 +897,8 @@ function initAnimations(){
 
 function manageAnimations(d){
 
+	animMixer.timeScale = animSpeed;
+
 	if(!action_tail.isRunning()){
 		console.log("anim tail play");
 		action_tail.weight = 10;
@@ -895,6 +982,7 @@ function loadDoggoGLTF(file){
 		function ( gltf ) {
 			dogGLTF = gltf.scene;
 			dogGLTF.scale.set(-0.8,0.8,-0.8);
+			dogGLTF.position.x += -2;
 			console.log("dooog: ",dogGLTF);
 			scene.add( dogGLTF );
 			loadedFiles += 1;
@@ -1052,6 +1140,7 @@ function catchTreats(){
 	for (const [key, value] of Object.entries(treats)) {
 				if(value.position.distanceTo(dogGLTF.position) < 1.5){
 					deleteMesh(value);
+					treats[key] = null;
 					delete treats[key];
 
 					if(tailSpeed < 2){
@@ -1064,7 +1153,7 @@ function catchTreats(){
 					console.log("Points: ", points);
 				}
 			}
-	if(tailSpeed > 0.2){
+	if(tailSpeed > 0.2 && started){
 		tailSpeed += -0.001;
 	}
 }
@@ -1617,6 +1706,9 @@ function manageHUD(){
 	}else{
 		document.getElementById("reload-warning").style.display = 'none';
 	}
+
+	animSpeed = document.getElementById("animSpeed").value / 10;
+	document.getElementById("animSpeedText").innerHTML = "Adjust animation speed: " + animSpeed;
 }
 
 function opensettings(){
