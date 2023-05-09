@@ -133,7 +133,7 @@
 			right: 2%;
 			box-shadow: 0px 0px 15px #4a4e516f;
 
-			display: flex;
+			display: none;
   			justify-content: center;
   			align-items: center;
 		}
@@ -499,19 +499,17 @@ let character = new THREE.Mesh(charGeometry,charMaterial);
 character.position.y += 1.25;
 character.position.x += -2;
 
-let buttonGeometry = new THREE.BoxGeometry(5,2,2);
+
 let buttonMaterial1 = new THREE.MeshToonMaterial({color: 0xdd5050, transparent: true});
-let buttonMaterial2 = new THREE.MeshToonMaterial({color: 0xffaa50, transparent: true});
-let button1 = new THREE.Mesh(buttonGeometry,buttonMaterial1);
-let button2 = new THREE.Mesh(buttonGeometry,buttonMaterial2);
+let buttonMaterial2 = new THREE.MeshToonMaterial({color: 0xdd7030, transparent: true});
+let button1;
+let button2;
 
-button1.position.set(8,1,3);
-button1.rotation.y = 0.6;
+loadTextGLTF("models/gltf/text.glb");
 
-button2.position.set(-8,1,3);
-button2.rotation.y = -0.4;
-
+let skelHelper;
 loadDoggoGLTF("models/gltf/dogtest.glb");
+
 for(let i = 0; i<10; i++){
 	loadTileGLTF(tilePaths[i],i);
 }
@@ -536,9 +534,6 @@ scene.add(ambientLight);
 scene.add(character);
 scene.add(groundPlane);
 
-scene.add(button1);
-scene.add(button2);
-
 const raycaster = new THREE.Raycaster();	//to select blocks
 const pointer = new THREE.Vector2();
 
@@ -558,9 +553,9 @@ document.body.appendChild(renderer.domElement);
 // Controls
 let cameraControls;
 if(typeof InstallTrigger !== 'undefined'){
-	cameraControls = new OrbitControlsModified( camera, renderer.domElement );
+	cameraControls = new OrbitControlsModified( camera, renderer.domElement );	//uses modified one in Firefox
 }else{
-	cameraControls = new OrbitControls( camera, renderer.domElement );
+	cameraControls = new OrbitControls( camera, renderer.domElement );	//uses original on other browsers
 }
 cameraControls.enableDamping = true;
 cameraControls.enablePan = false;
@@ -614,20 +609,27 @@ function waitStart() {
 
 			button1.scale.set(1,1,1);
 			button2.scale.set(1,1,1);
+			buttonMaterial1.setValues({color: 0xdd5050});
+			buttonMaterial2.setValues({color: 0xdd7030});
 			if(!paused){
 				// calculate objects intersecting the picking ray
 				let intersects = raycaster.intersectObject( button1 );
 				if(intersects.length > 0){
-					button1.scale.set(1.2,1.2,1.2);
+					button1.scale.set(1.01,1.01,1.01);
+					buttonMaterial1.setValues({color: 0xdd7070});
 					mouseIsOver = "Start";
 				}
 
 				intersects = raycaster.intersectObject( button2 );
 				if(intersects.length > 0){
-					button2.scale.set(1.2,1.2,1.2);
+					button2.scale.set(1.01,1.01,1.01);
+					buttonMaterial2.setValues({color: 0xdd9050});
 					mouseIsOver = "Settings";
 				}
 			}
+
+			
+
 			cameraControls.update();
 			renderer.render(scene,camera);
 			stats.end();
@@ -640,10 +642,8 @@ function waitStart() {
 				cameraControls.autoRotateSpeed = 50;
 				cameraControls.maxPolarAngle = cameraControls.getPolarAngle() - 0.014;
 
-				buttonMaterial1.opacity += -0.1;
-				buttonMaterial2.opacity += -0.1;
-
 				document.getElementById("clickCatcher").style.display = "none";
+				document.getElementById("settings-button").style.display = "flex";
 
 			}
 
@@ -657,8 +657,7 @@ function waitStart() {
 
 			initAnimations();
 
-			const skelHelper = new THREE.SkeletonHelper(dogGLTF.getObjectByName("Armature"));
-			//scene.add( skelHelper );
+			skelHelper = new THREE.SkeletonHelper(dogGLTF.getObjectByName("Armature"));
 
 			loaded = true;
 		}
@@ -694,7 +693,10 @@ function animateloop() {  //max fps = 60
 		renderer.render(scene,camera);
 		stats.end();
 
-		console.log("treats: ", treats);
+		if(buttonMaterial1.opacity > 0){
+			buttonMaterial1.opacity += -0.01;
+			buttonMaterial2.opacity += -0.01;
+		}
 
 		manageHUD();
 		document.getElementById("loading-screen").style.display = "none";
@@ -708,8 +710,7 @@ function animateloop() {  //max fps = 60
 
 		initAnimations();
 
-		const skelHelper = new THREE.SkeletonHelper(dogGLTF.getObjectByName("Armature"));
-		//scene.add( skelHelper );
+		skelHelper = new THREE.SkeletonHelper(dogGLTF.getObjectByName("Armature"));
 
 		loaded = true;
 	}
@@ -1087,6 +1088,39 @@ function loadTreatsGLTF(file){
 				treatsBase.push(obj);
 			}
 			loadedFiles += 1;
+		},
+		// called while loading is progressing
+		function ( xhr ) {
+			console.log( ( xhr.loadedFiles / xhr.total * 100 ) + '% loadedFiles' );
+		},
+		// called when loading has errors
+		function ( error ) {
+			console.log( 'An error happened' );
+		}
+	);
+}
+
+function loadTextGLTF(file){
+
+	// Instantiate a loader
+	const loader = new GLTFLoader();
+	// Load a glTF resource
+	loader.load(
+		// resource URL
+		file,
+		// called when the resource is loadedFiles
+		function ( gltf ) {
+			button1 = new THREE.Mesh(gltf.scene.getObjectByName("start").geometry,buttonMaterial1);
+			button2 = new THREE.Mesh(gltf.scene.getObjectByName("settings").geometry,buttonMaterial2);
+
+			button1.position.set(6,1,0);
+			button1.rotation.y = -2.3;
+
+			button2.position.set(-8,1,3);
+			button2.rotation.y = 3;
+
+			scene.add(button1);
+			scene.add(button2);
 		},
 		// called while loading is progressing
 		function ( xhr ) {
@@ -1768,11 +1802,16 @@ function manageHUD(){
 		stamina = 240;
 		document.getElementById("colision-warning").style.display = 'initial';
 		document.getElementById("jump-charge-bar").style.display = 'initial';
-		
+		if(loaded){
+			scene.add( skelHelper );
+		}
 	}else{
 		interval = 1/60;
 		document.getElementById("colision-warning").style.display = 'none';
 		document.getElementById("jump-charge-bar").style.display = 'none';
+		if(loaded){
+			scene.remove( skelHelper );
+		}
 	}
 
 	if(shouldReload){															// shows reload warning
