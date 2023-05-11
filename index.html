@@ -43,6 +43,7 @@
 		}
 
 		#scoreboard {
+			display: none;
 			position: absolute;
 			height: 15px;
 			bottom: 7%;
@@ -58,6 +59,7 @@
 		}
 
 		#stamina-bar {
+			display: none;
 			position: absolute;
 			width: 15%;
 			height: 5px;
@@ -502,8 +504,11 @@ character.position.x += -2;
 
 let buttonMaterial1 = new THREE.MeshToonMaterial({color: 0xdd5050, transparent: true});
 let buttonMaterial2 = new THREE.MeshToonMaterial({color: 0xdd7030, transparent: true});
+let buttonMaterialOutline = new THREE.MeshToonMaterial({color: 0xffeeee, transparent: true});
 let button1;
 let button2;
+let button1outline;
+let button2outline;
 
 loadTextGLTF("models/gltf/text.glb");
 
@@ -607,15 +612,28 @@ function waitStart() {
 
 			mouseIsOver = "";
 
-			button1.scale.set(1,1,1);
-			button2.scale.set(1,1,1);
-			buttonMaterial1.setValues({color: 0xdd5050});
-			buttonMaterial2.setValues({color: 0xdd7030});
+			
+			
 			if(!paused){
 				// calculate objects intersecting the picking ray
-				let intersects = raycaster.intersectObject( button1 );
+				let intersects = raycaster.intersectObject( button1outline );
+				if(intersects.length == 0){
+					button1.scale.set(1,1,1);
+					button1outline.scale.set(1,1,1);
+					buttonMaterial1.setValues({color: 0xdd5050});
+				}
+
+				intersects = raycaster.intersectObject( button2outline );
+				if(intersects.length == 0){
+					button2.scale.set(1,1,1);
+					button2outline.scale.set(1,1,1);
+					buttonMaterial2.setValues({color: 0xdd7030});
+				}
+				
+				intersects = raycaster.intersectObject( button1 );
 				if(intersects.length > 0){
 					button1.scale.set(1.01,1.01,1.01);
+					button1outline.scale.set(1.01,1.01,1.01);
 					buttonMaterial1.setValues({color: 0xdd7070});
 					mouseIsOver = "Start";
 				}
@@ -623,6 +641,7 @@ function waitStart() {
 				intersects = raycaster.intersectObject( button2 );
 				if(intersects.length > 0){
 					button2.scale.set(1.01,1.01,1.01);
+					button2outline.scale.set(1.01,1.01,1.01);
 					buttonMaterial2.setValues({color: 0xdd9050});
 					mouseIsOver = "Settings";
 				}
@@ -644,6 +663,8 @@ function waitStart() {
 
 				document.getElementById("clickCatcher").style.display = "none";
 				document.getElementById("settings-button").style.display = "flex";
+				document.getElementById("scoreboard").style.display = "initial";
+				document.getElementById("stamina-bar").style.display = "initial";
 
 			}
 
@@ -696,6 +717,7 @@ function animateloop() {  //max fps = 60
 		if(buttonMaterial1.opacity > 0){
 			buttonMaterial1.opacity += -0.01;
 			buttonMaterial2.opacity += -0.01;
+			buttonMaterialOutline.opacity += -0.01;
 		}
 
 		manageHUD();
@@ -1112,15 +1134,23 @@ function loadTextGLTF(file){
 		function ( gltf ) {
 			button1 = new THREE.Mesh(gltf.scene.getObjectByName("start").geometry,buttonMaterial1);
 			button2 = new THREE.Mesh(gltf.scene.getObjectByName("settings").geometry,buttonMaterial2);
+			button1outline = new THREE.Mesh(gltf.scene.getObjectByName("start_outline").geometry,buttonMaterialOutline);
+			button2outline = new THREE.Mesh(gltf.scene.getObjectByName("settings_outline").geometry,buttonMaterialOutline);
 
 			button1.position.set(6,1,0);
 			button1.rotation.y = -2.3;
+			button1outline.position.set(6,1,0);
+			button1outline.rotation.y = -2.3;
 
 			button2.position.set(-8,1,3);
 			button2.rotation.y = 3;
+			button2outline.position.set(-8,1,3);
+			button2outline.rotation.y = 3;
 
 			scene.add(button1);
 			scene.add(button2);
+			scene.add(button1outline);
+			scene.add(button2outline);
 		},
 		// called while loading is progressing
 		function ( xhr ) {
