@@ -1580,7 +1580,7 @@ function buildingColisions(pos){
 			break;
 	}
 
-	if(existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 1 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 6){
+	if(existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 1 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 10){
 			if(isOnBlock(pos,1,1,1,1)){  //tree1
 				return true;
 			}
@@ -1596,8 +1596,8 @@ function buildingColisions(pos){
 }
 
 function propCollisions(pos){
-	if(existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 1 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 6){
-	if((dogGLTF.position.y < groundHeight + dogOffset + 2)){
+	if(existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 1 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 10){
+	if((dogGLTF.position.y < groundHeight + dogOffset + 2) || !sprinting){
 		if(isOnSmallBlock(pos,44,112,44,123)){  //fence
 			return true;
 		}
@@ -1651,12 +1651,12 @@ function cameraAndGroundColisions(){
 	}else if((isOnTopOfBlock(dogFrontPos,dogBackPos,44,112,44,123) || 
 			 isOnTopOfBlock(dogFrontPos,dogBackPos,44,123,83,123) || 
 			 isOnTopOfBlock(dogFrontPos,dogBackPos,83,112,83,123)) && 
-			 (existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 1 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 6) &&
+			 (existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 1 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 10) &&
 			 (character.position.y >= groundHeight)){	
 		document.getElementById("colision-warning").style.backgroundColor = 'pink';
 		groundHeight = 3;
 	}else if(isOnTopOfBlock(dogFrontPos,dogBackPos,0,118,10,122) && 
-			 (existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 1 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 6) &&
+			 (existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 1 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 10) &&
 			 (character.position.y >= groundHeight)){	
 		document.getElementById("colision-warning").style.backgroundColor = 'pink';
 		groundHeight = 1.95; //bench
