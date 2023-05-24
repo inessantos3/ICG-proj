@@ -4,7 +4,7 @@
 
 <head>
 
-	<title>Doggo</title>
+	<title>Dog World</title>
 
 	<meta charset="utf-8">
 
@@ -302,11 +302,11 @@ let started = false;
 let gameTime = 0;
 let dogGLTF;
 let dogMaterial
-let tilePaths = ["models/gltf/tilebase.glb","models/gltf/tilebase.glb",
-				 "models/gltf/tile2.glb","models/gltf/tile2.glb",
-				 "models/gltf/tile2.glb","models/gltf/tile2.glb",
-				 "models/gltf/tile1.glb","models/gltf/tile1.glb",
-				 "models/gltf/tile1.glb","models/gltf/tile1.glb"];
+let tilePaths = ["models/gltf/tilebase.glb","models/gltf/tile1.glb",
+				 "models/gltf/tile1.glb","models/gltf/tile2.glb",
+				 "models/gltf/tile2.glb","models/gltf/tile3.glb",
+				 "models/gltf/tile4.glb","models/gltf/tile5.glb",
+				 "models/gltf/tile5.glb","models/gltf/tile6.glb"];
 let tiles = [];
 let existentTiles = {};
 
@@ -1258,6 +1258,29 @@ function addTreats(posX, posZ){
 function catchTreats(){
 	for (const [key, value] of Object.entries(treats)) {
 				if(value.position.distanceTo(dogGLTF.position) < 1.5){
+					
+					switch (value.name) {
+						case "steak":
+							stamina += 100;
+							if(stamina > 240){stamina = 240;}
+							points += 30;
+							break;
+					
+						case "cheese":
+							stamina += 30;
+							if(stamina > 240){stamina = 240;}
+							points += 100;
+							break;
+
+						case "bone":
+							stamina += 30;
+							if(stamina > 240){stamina = 240;}
+							points += 10;
+							break;
+						default:
+							break;
+					}
+					
 					deleteMesh(value);
 					treats[key] = null;
 					delete treats[key];
@@ -1265,9 +1288,9 @@ function catchTreats(){
 					if(tailSpeed < 2){
 						tailSpeed += 0.5
 					}
-					stamina += 30;
-					if(stamina > 240){stamina = 240;}
-					points += 10;
+
+					
+					
 					document.getElementById("score").innerHTML = "Score: " + points;
 					console.log("Points: ", points);
 				}
@@ -1504,83 +1527,23 @@ function checkDogColisions(moveVector){
 
 function buildingColisions(pos){
 	
-	switch(existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0]){
-		case 0:
-
-			break;
-		case 1:
-
-			break;
-		case 2:
-			if(isOnBlock(pos,11,18,20,27)){  //main house
+	if(existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 0 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 7){
+		if(isOnBlock(pos,29,10,31,12)){  //ice cream stand
 				return true;
 			}
-			if(isOnBlock(pos,21,18,27,21)){  //main house's garage
-				return true;
-			}
-			break;
-		case 3:
-			if(isOnBlock(pos,11,18,20,27)){  //main house
-				return true;
-			}
-			if(isOnBlock(pos,21,18,27,21)){  //main house's garage
-				return true;
-			}
-			break;
-		case 4:
-			if(isOnBlock(pos,11,18,20,27)){  //main house
-				return true;
-			}
-			if(isOnBlock(pos,21,18,27,21)){  //main house's garage
-				return true;
-			}
-			break;
-		case 5:
-			if(isOnBlock(pos,11,18,20,27)){  //main house
-				return true;
-			}
-			if(isOnBlock(pos,21,18,27,21)){  //main house's garage
-				return true;
-			}
-			break;
-		case 6:
-			if(isOnBlock(pos,11,18,20,27)){  //main house
-				return true;
-			}
-			if(isOnBlock(pos,21,18,27,21)){  //main house's garage
-				return true;
-			}
-			break;
-		case 7:
-			if(isOnBlock(pos,11,18,20,27)){  //main house
-				return true;
-			}
-			if(isOnBlock(pos,21,18,27,21)){  //main house's garage
-				return true;
-			}
-			break;
-		case 8:
-			if(isOnBlock(pos,11,18,20,27)){  //main house
-				return true;
-			}
-			if(isOnBlock(pos,21,18,27,21)){  //main house's garage
-				return true;
-			}
-			break;
-		case 9:
-			if(isOnBlock(pos,11,18,20,27)){  //main house
-				return true;
-			}
-			if(isOnBlock(pos,21,18,27,21)){  //main house's garage
-				return true;
-			}
-			break;
-		default:
-			return false;
-			break;
 	}
 
-	if(existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 1 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 10){
+	if((existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 0 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 5) || 
+	   (existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 6 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 10)){
+		if(isOnBlock(pos,1,12,1,16)){  //little trees
+				return true;
+			}
+		if(isOnBlock(pos,1,18,1,19)){  //little trees
+				return true;
+			}
+	}
+
+	if(existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 0 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 10){
 			if(isOnBlock(pos,1,1,1,1)){  //tree1
 				return true;
 			}
@@ -1590,13 +1553,39 @@ function buildingColisions(pos){
 			if(isOnBlock(pos,0,31,0,31)){  //tree3
 				return true;
 			}
+
+			if(isOnBlock(pos,11,18,20,27)){  //main house
+				return true;
+			}
+			if(isOnBlock(pos,21,18,27,21)){  //main house's garage
+				return true;
+			}
+
+			if(isOnBlock(pos,11,1,20,6)){  //tall building
+				return true;
+			}
+
+			if(isOnSmallBlock(pos,88,65,89,66)){ //lamp1
+				return true;
+			}
+			if(isOnSmallBlock(pos,98,65,99,66)){ //lamp2
+				return true;
+			}
+			if(isOnSmallBlock(pos,107,65,108,66)){ //lamp3
+				return true;
+			}
+
+			if(isOnSmallBlock(pos,37,9,38,10)){ //lamp4
+				return true;
+			}
+
 			
 		}
 	return false;
 }
 
 function propCollisions(pos){
-	if(existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 1 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 10){
+	if(existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 0 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 10){
 	if((dogGLTF.position.y < groundHeight + dogOffset + 2) || !sprinting){
 		if(isOnSmallBlock(pos,44,112,44,123)){  //fence
 			return true;
@@ -1611,6 +1600,10 @@ function propCollisions(pos){
 
 	if(dogGLTF.position.y < 0.44 + dogOffset){
 		if(isOnSmallBlock(pos,0,118,10,122)){  //bench1
+			return true;
+		}
+
+		if(isOnSmallBlock(pos,57,35,69,40)){  //bench2
 			return true;
 		}
 	}
@@ -1651,12 +1644,12 @@ function cameraAndGroundColisions(){
 	}else if((isOnTopOfBlock(dogFrontPos,dogBackPos,44,112,44,123) || 
 			 isOnTopOfBlock(dogFrontPos,dogBackPos,44,123,83,123) || 
 			 isOnTopOfBlock(dogFrontPos,dogBackPos,83,112,83,123)) && 
-			 (existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 1 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 10) &&
+			 (existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 0 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 10) &&
 			 (character.position.y >= groundHeight)){	
 		document.getElementById("colision-warning").style.backgroundColor = 'pink';
 		groundHeight = 3;
-	}else if(isOnTopOfBlock(dogFrontPos,dogBackPos,0,118,10,122) && 
-			 (existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 1 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 10) &&
+	}else if((isOnTopOfBlock(dogFrontPos,dogBackPos,0,118,10,122) || isOnTopOfBlock(dogFrontPos,dogBackPos,57,35,69,40))&& 
+			 (existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] > 0 && existentTiles[[worldCenter[0]*100,worldCenter[1]*100]][0] < 10) &&
 			 (character.position.y >= groundHeight)){	
 		document.getElementById("colision-warning").style.backgroundColor = 'pink';
 		groundHeight = 1.95; //bench
